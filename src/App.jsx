@@ -12,9 +12,12 @@ const TRANSLATIONS = {
   arabic: {
     logoAlt: "شعار الجامعة",
     title: "معالجة الخبر",
+    titleInputLabel: "عنوان الخبر",
+    titlePlaceholder: "مثال: جلالةُ السلطان المعظم ورئيس الوزراء الإسباني يشهدان توقيع اتفاقية...",
+    ariaTitleInput: "مربع إدخال عنوان الخبر",
     inputLabel: "ألصق نص المقال المراد مراجعته",
     ariaInput: "مربع إدخال نص المقال لمراجعته",
-    errorNoQuery: "ألصق نص الخبر أولًا.",
+    errorNoQuery: "ألصق عنوان ونص الخبر أولًا.",
     errorFetch: "تعذر الحصول على النتيجة",
     errorUnexpected: "حدث خطأ غير متوقع.",
     reviewHeading: "النتيجة النهائية للمراجعة",
@@ -31,10 +34,13 @@ const TRANSLATIONS = {
   english: {
     logoAlt: "University Logo",
     title: "News Review",
+    titleInputLabel: "News Title",
+    titlePlaceholder: "Example: Enter the news headline here...",
+    ariaTitleInput: "Text input for news title",
     inputLabel: "Paste the article text to review",
     placeholder: "Example: Paste the full news article here...",
     ariaInput: "Text input for article review",
-    errorNoQuery: "Please paste the article text first.",
+    errorNoQuery: "Please enter the title and article text first.",
     errorFetch: "Failed to get result",
     errorUnexpected: "An unexpected error occurred.",
     reviewHeading: "Final Review Result",
@@ -181,6 +187,7 @@ function renderTalkSmart(talk) {
 function AINewsReview() {
   const { isArabic, language } = useLanguage();
   const T = TRANSLATIONS[language] || TRANSLATIONS.english;
+  const [newsTitle, setNewsTitle] = useState("");
   const [query, setQuery] = useState("");
   const [review, setReview] = useState("");
   const [loading, setLoading] = useState(false);
@@ -199,8 +206,9 @@ function AINewsReview() {
   async function handleCheck() {
     setErr("");
     setReview("");
+    const t = newsTitle.trim();
     const q = query.trim();
-    if (!q) {
+    if (!t || !q) {
       setErr(T.errorNoQuery);
       return;
     }
@@ -209,6 +217,7 @@ function AINewsReview() {
     try {
       console.log("🔍 Sending review request to:", REVIEW_URL);
       console.log("📝 Request body:", {
+        title: t,
         news_text: q,
       });
 
@@ -216,6 +225,7 @@ function AINewsReview() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          title: t,
           news_text: q,
         }),
       });
@@ -461,6 +471,32 @@ function AINewsReview() {
         <div className="rounded-2xl backdrop-blur-xl p-4 sm:p-6 bg-[#0a0f1c]/70 shadow-[inset_0_0_0_1px_rgba(255,255,255,.06)]">
           {/* Input */}
           <div className="flex flex-col gap-3">
+            {/* Title Input */}
+            <label className="text-sm text-white/70">
+              {T.titleInputLabel}
+            </label>
+            <motion.input
+              type="text"
+              className="rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 transition-all duration-300 bg-[#0b1327] border border-white/20 focus:ring-indigo-400/60 shadow-[0_0_20px_rgba(99,102,241,.08)] text-white placeholder-white/60"
+              placeholder={T.titlePlaceholder}
+              value={newsTitle}
+              onChange={(e) => setNewsTitle(e.target.value)}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(99, 102, 241, 0.6)';
+                e.target.style.boxShadow = '0 0 30px rgba(99, 102, 241, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.08)';
+              }}
+              aria-label={T.ariaTitleInput}
+              whileFocus={{
+                scale: 1.01,
+                transition: { duration: 0.2 }
+              }}
+            />
+
+            {/* News Text Input */}
             <label className="text-sm text-white/70">
               {T.inputLabel}
             </label>
