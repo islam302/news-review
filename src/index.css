@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* خلفية متدرجة + نجوم متحركة (هوية JoinSoftwave) */
 body {
   background: radial-gradient(1200px 800px at 50% -200px, #0f2b55 0%, transparent 60%),
               radial-gradient(1200px 800px at 50% 120%, #0f2b55 0%, transparent 60%),
