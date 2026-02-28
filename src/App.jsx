@@ -12,11 +12,16 @@ const TRANSLATIONS = {
   arabic: {
     logoAlt: "شعار الجامعة",
     title: "معالجة الخبر",
-    inputLabel: "ألصق نص المقال المراد مراجعته",
-    ariaInput: "مربع إدخال نص المقال لمراجعته",
-    errorNoQuery: "ألصق نص الخبر أولًا.",
-    errorFetch: "تعذر الحصول على النتيجة",
-    errorUnexpected: "حدث خطأ غير متوقع.",
+    titleLabel: "عنوان الخبر",
+    titlePlaceholder: "ادخل عنوان الخبر هنا....",
+    articleLabel: "نص المقال",
+    articlePlaceholder: "ادخل نص المقال كاملاً هنا....",
+    ariaTitleInput: "مربع إدخال عنوان الخبر",
+    ariaArticleInput: "مربع إدخال نص المقال لمراجعته",
+    errorNoTitle: "أدخل عنوان الخبر أولًا.",
+    errorNoArticle: "ألصق نص الخبر أولًا.",
+    errorGeneric: "يوجد تحديثات حالياً، سنعود قريباً.",
+    reviewTitleHeading: "العنوان بعد المراجعة",
     reviewHeading: "النتيجة النهائية للمراجعة",
     copyVerificationAria: "نسخ نتيجة المراجعة",
     copyResult: "نسخ النتيجة",
@@ -25,18 +30,22 @@ const TRANSLATIONS = {
     checking: "جاري المراجعة…",
     checkNow: "ابدأ الآن",
     heroDescription:
-      "ضع نص المقال كاملاً، وسنراجع المحتوى ونقدم لك الخلاصة النهائية بعد التحليل.",
+      "ضع عنوان الخبر ونص المقال كاملاً، وسنراجع المحتوى ونقدم لك الخلاصة النهائية بعد التحليل.",
     loaderLine: "محرك المراجعة يعمل… قراءة النص وتحليل المحتوى لإعداد الخلاصة.",
   },
   english: {
     logoAlt: "University Logo",
     title: "News Review",
-    inputLabel: "Paste the article text to review",
-    placeholder: "Example: Paste the full news article here...",
-    ariaInput: "Text input for article review",
-    errorNoQuery: "Please paste the article text first.",
-    errorFetch: "Failed to get result",
-    errorUnexpected: "An unexpected error occurred.",
+    titleLabel: "News Title",
+    titlePlaceholder: "Example: 5 Palestinians killed in Israeli strikes on Gaza",
+    articleLabel: "Article Text",
+    articlePlaceholder: "Paste the full news article here...",
+    ariaTitleInput: "Text input for news title",
+    ariaArticleInput: "Text input for article review",
+    errorNoTitle: "Please enter the news title first.",
+    errorNoArticle: "Please paste the article text first.",
+    errorGeneric: "There are updates currently, we will be back soon.",
+    reviewTitleHeading: "Reviewed Title",
     reviewHeading: "Final Review Result",
     copyVerificationAria: "Copy review result",
     copyResult: "Copy Result",
@@ -45,7 +54,7 @@ const TRANSLATIONS = {
     checking: "Reviewing...",
     checkNow: "Review Now",
     heroDescription:
-      "Paste the full article text and we'll analyze it to deliver a final AI-generated review.",
+      "Enter the news title and full article text, and we'll analyze it to deliver a final AI-generated review.",
     loaderLine:
       "The review engine is working… reading the article, analyzing the content, and shaping the final insight.",
   }
@@ -181,8 +190,10 @@ function renderTalkSmart(talk) {
 function AINewsReview() {
   const { isArabic, language } = useLanguage();
   const T = TRANSLATIONS[language] || TRANSLATIONS.english;
-  const [query, setQuery] = useState("");
-  const [review, setReview] = useState("");
+  const [newsTitle, setNewsTitle] = useState("");
+  const [article, setArticle] = useState("");
+  const [reviewedTitle, setReviewedTitle] = useState("");
+  const [reviewedArticle, setReviewedArticle] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const textareaRef = useRef(null);
@@ -194,74 +205,60 @@ function AINewsReview() {
       textarea.style.height = 'auto';
       textarea.style.height = Math.min(textarea.scrollHeight, 400) + 'px';
     }
-  }, [query]);
+  }, [article]);
 
   async function handleCheck() {
     setErr("");
-    setReview("");
-    const q = query.trim();
-    if (!q) {
-      setErr(T.errorNoQuery);
+    setReviewedTitle("");
+    setReviewedArticle("");
+    const t = newsTitle.trim();
+    const a = article.trim();
+    if (!t) {
+      setErr(T.errorNoTitle);
+      return;
+    }
+    if (!a) {
+      setErr(T.errorNoArticle);
       return;
     }
 
     setLoading(true);
     try {
-      console.log("🔍 Sending review request to:", REVIEW_URL);
-      console.log("📝 Request body:", {
-        news_text: q,
-      });
-
       const res = await fetch(REVIEW_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          news_text: q,
+          title: t,
+          article: a,
         }),
       });
 
-      console.log("📡 Response status:", res.status, res.statusText);
-
       const text = await res.text();
-      console.log("📄 Response text:", text);
-
-      if (!text.trim()) {
-        throw new Error("Server returned empty response");
-      }
+      if (!text.trim()) throw new Error();
 
       let data;
       try {
         data = JSON.parse(text);
-        console.log("✅ Parsed JSON data:", data);
-      } catch (parseError) {
-        console.error("JSON Parse Error:", parseError);
-        console.error("Response text:", text);
-        throw new Error("Invalid JSON response from server");
+      } catch {
+        throw new Error();
       }
 
-      if (!res.ok) {
-        throw new Error(data?.error || T.errorFetch);
-      }
+      if (!res.ok || !data?.title || !data?.article) throw new Error();
 
-      if (!data?.review) {
-        throw new Error(T.errorUnexpected);
-      }
-
-      setReview(data.review);
-    } catch (e) {
-      console.error("Error in handleCheck:", e);
-      setErr(e.message || T.errorUnexpected);
+      setReviewedTitle(data.title);
+      setReviewedArticle(data.article);
+    } catch {
+      setErr(T.errorGeneric);
     } finally {
       setLoading(false);
     }
   }
 
   function copyAll() {
-    if (!review) return;
+    if (!reviewedArticle) return;
+    const fullText = reviewedTitle + "\n\n" + reviewedArticle;
 
-    navigator.clipboard.writeText(review).then(() => {
-      // Show success feedback
-      const originalText = T.copyResult;
+    navigator.clipboard.writeText(fullText).then(() => {
       const button =
         document.querySelector('[aria-label*="نسخ"]') ||
         document.querySelector('[aria-label*="Copy"]');
@@ -277,7 +274,7 @@ function AINewsReview() {
     });
   }
 
-  const renderedReview = useMemo(() => renderTalkSmart(review || ""), [review]);
+  const renderedArticle = useMemo(() => renderTalkSmart(reviewedArticle || ""), [reviewedArticle]);
 
   return (
     <div dir={isArabic ? 'rtl' : 'ltr'} className="min-h-screen relative overflow-hidden transition-colors duration-500 px-3 sm:px-0 bg-[#05070e] text-white">
@@ -459,17 +456,17 @@ function AINewsReview() {
       {/* Main card */}
       <div className="relative z-10 mx-auto mt-6 sm:mt-8 w-full max-w-3xl p-1 rounded-2xl bg-gradient-to-r from-indigo-500/30 via-fuchsia-500/30 to-teal-500/30">
         <div className="rounded-2xl backdrop-blur-xl p-4 sm:p-6 bg-[#0a0f1c]/70 shadow-[inset_0_0_0_1px_rgba(255,255,255,.06)]">
-          {/* Input */}
+          {/* Title Input */}
           <div className="flex flex-col gap-3">
             <label className="text-sm text-white/70">
-              {T.inputLabel}
+              {T.titleLabel}
             </label>
-            <motion.textarea
-              ref={textareaRef}
-              className="min-h-[60px] max-h-[400px] rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 transition-all duration-300 resize-none bg-[#0b1327] border border-white/20 focus:ring-indigo-400/60 shadow-[0_0_20px_rgba(99,102,241,.08)] text-white placeholder-white/60 overflow-y-auto"
-              placeholder={T.placeholder}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+            <motion.input
+              type="text"
+              className="rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 transition-all duration-300 bg-[#0b1327] border border-white/20 focus:ring-indigo-400/60 shadow-[0_0_20px_rgba(99,102,241,.08)] text-white placeholder-white/60"
+              placeholder={T.titlePlaceholder}
+              value={newsTitle}
+              onChange={(e) => setNewsTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault();
@@ -484,10 +481,42 @@ function AINewsReview() {
                 e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
                 e.target.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.08)';
               }}
-              aria-label={T.ariaInput}
-              aria-describedby="input-help"
-              rows={1}
-              whileFocus={{ 
+              aria-label={T.ariaTitleInput}
+              whileFocus={{
+                scale: 1.01,
+                transition: { duration: 0.2 }
+              }}
+            />
+          </div>
+
+          {/* Article Input */}
+          <div className="flex flex-col gap-3 mt-4">
+            <label className="text-sm text-white/70">
+              {T.articleLabel}
+            </label>
+            <motion.textarea
+              ref={textareaRef}
+              className="min-h-[60px] max-h-[400px] rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 transition-all duration-300 resize-none bg-[#0b1327] border border-white/20 focus:ring-indigo-400/60 shadow-[0_0_20px_rgba(99,102,241,.08)] text-white placeholder-white/60 overflow-y-auto"
+              placeholder={T.articlePlaceholder}
+              value={article}
+              onChange={(e) => setArticle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  handleCheck();
+                }
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(99, 102, 241, 0.6)';
+                e.target.style.boxShadow = '0 0 30px rgba(99, 102, 241, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.08)';
+              }}
+              aria-label={T.ariaArticleInput}
+              rows={3}
+              whileFocus={{
                 scale: 1.01,
                 transition: { duration: 0.2 }
               }}
@@ -568,7 +597,7 @@ function AINewsReview() {
                 <div className="absolute -inset-1 rounded-2xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400" />
               </motion.button>
 
-              {review && (
+              {reviewedArticle && (
                 <motion.button
                   onClick={copyAll}
                   className="px-5 py-2.5 rounded-xl transition font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400/50 bg-white/10 hover:bg-white/15 border border-white/10"
@@ -629,7 +658,7 @@ function AINewsReview() {
 
           {/* Result */}
           <AnimatePresence>
-            {review && !loading && (
+            {reviewedArticle && !loading && (
               <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -637,6 +666,23 @@ function AINewsReview() {
                 transition={{ duration: 0.5, ease: "easeOut" }}
                 className="mt-8 grid gap-6"
               >
+                {/* Reviewed Title */}
+                <motion.div
+                  className="rounded-2xl p-6 sm:p-7 bg-white/8 border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,.2)]"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <NeonDot color="rgba(168,85,247,1)" />
+                    <h3 className="text-2xl font-extrabold">{T.reviewTitleHeading}</h3>
+                  </div>
+                  <p className="leading-8 text-lg font-bold text-white/90">
+                    {reviewedTitle}
+                  </p>
+                </motion.div>
+
+                {/* Reviewed Article */}
                 <motion.div
                   className="rounded-2xl p-6 sm:p-7 bg-white/8 border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,.2)]"
                   initial={{ opacity: 0, y: 20 }}
@@ -648,7 +694,7 @@ function AINewsReview() {
                     <h3 className="text-2xl font-extrabold">{T.reviewHeading}</h3>
                   </div>
                   <div className="prose max-w-none leading-8 text-base prose-invert whitespace-pre-line">
-                    {renderedReview}
+                    {renderedArticle}
                   </div>
                 </motion.div>
               </motion.div>
