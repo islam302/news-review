@@ -4,7 +4,7 @@ export default async function handler(req, res) {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": "ata_d96559789f111fffa039143dd65273d1d71a824f998e30b00a26a397",
+        "x-api-key": "nra_ce35c0f17f8ab7e1446eb14af61baf247e17aca000693b4ee4a0984e",
         ...(req.headers.authorization && { Authorization: req.headers.authorization }),
       },
       body: req.method === "GET" ? undefined : JSON.stringify(req.body),
